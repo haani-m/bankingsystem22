@@ -21,24 +21,23 @@ ID: 20782374
 #include <sstream>
 #include <vector>
 #include <string>
-#include<cmath>
-#include <ctime>
+#include<cmath> //needed for implementing interest calc
+#include <ctime> //needed for transaction timestamp
+#include <stdlib.h> //needed for converting user input to double
 
 using namespace std;
 
 char pound = 156;
+
+
 //------------transaction class--------
+
+
 class Transaction {
 	string desc;
 	string timestamp;
 	double value;
 public:
-
-	Transaction(string d, string ts, double v) {
-		desc = d;
-		timestamp = ts;
-		value = v;
-	};
 
 	Transaction(string d, double v) {
 		desc = d;
@@ -53,13 +52,13 @@ public:
 	}
 
 	void toString() {
-		cout << getdesc() << endl << pound << value << endl << timestamp << endl;
+		cout << getdesc() << " : " << pound << value << " on " << timestamp;
 	};
 
-	void historytoString(vector <Transaction> h) {
-
+	static void historytoString(vector <Transaction> h) {
 		for (Transaction i : h)
 			i.toString();
+		cout << endl;
 	}
 
 	void setdesc(string d) { desc = d; }
@@ -105,7 +104,7 @@ public:
 	virtual void addoverdraft(double o) {};
 	virtual void minusoverdraft(double o) {};
 
-	//!!!!!!!!!!!!!!!!!!!!!!!
+	
 	virtual double getinterestRate(void) { return 0; };
 	virtual void setinterestRate(double ir) {};
 
@@ -127,7 +126,7 @@ public:
 };
 
 
-//interfaces
+//0000000000000000000         interfaces       00000000000000000000
 class InterestEarning {
 // pure virtual to ensure that the method is implemented and overridden in savings class
 public:
@@ -140,7 +139,7 @@ public:
 //------	Current account		------
 
 class Current : public Account {
-	double overdraft = 500;
+	double overdraft = 500; //overdraft remaining
 public:
 	
 	//constructor
@@ -152,28 +151,78 @@ public:
 		appendhistory(tr);
 	}
 
-	//getters and setters !!!!!!!!!!!!!!!!!!!!!!!!!
+	//getters and setters 
 	double getoverdraft(void) { return overdraft; }
 	void setovoverdraft(double o) { overdraft = o; }
-	//void Account::addoverdraft(double o) { overdraft += o; }
-	//void Account::minusoverdraft(double o) { overdraft -= o; }
+	void addoverdraft(double o) { overdraft += o; }
+	void minusoverdraft(double o) { overdraft -= o; }
 
 
 	//methods
 	void Account::deposit(double depam) {
-		addbalance(depam);
+
+		//aglorithms for processing deposit when in overdraft
+		if (getbalance() < 0) {
+			
+			if (overdraft + depam >= 500) {
+				setbalance(depam - (500 - overdraft));
+			}
+
+			else if (depam + overdraft < 500) {
+				overdraft += depam;
+				addbalance(depam);
+			}
+		}
+
+		else {addbalance(depam);}
+
+		Transaction dep("Deposit", depam);
+		appendhistory(dep);
+		toString();
 	};
 
+	
 	void Account::withdraw(double witam) {
-		minusbalance(witam);
+		
+		//processing for withdrawls when in overdraft
+		if (getbalance()<0){
+			if (witam > overdraft) {
+				cout << "Insufficient funds" << endl;}
+
+			else {
+				minusbalance(witam);
+				minusoverdraft(witam);
+				Transaction wit("Withdrawl", -witam);
+				toString();
+			}
+		}
+
+		else {
+			if (witam > (getbalance() + overdraft))
+				cout << "Insufficient Fund" << endl;
+
+			else if (witam > getbalance() && witam < (getbalance() + overdraft)) {
+				overdraft -= (witam);
+				minusbalance(witam);
+				Transaction wit("Withdrawl", -witam);
+				toString();
+			}
+
+			else { 
+				minusbalance(witam);
+				Transaction wit("Withdrawl", -witam);
+				toString();
+			}
+			
+		}
+
 	};
 
 	void Account::toString() {
 		cout << gettype();
-		cout << " Account -- Balance " << pound << getbalance();
-		cout << " -- Overdraft " << pound << getoverdraft() << endl;
-		vector <Transaction> r = gethistory();
-		
+		cout << " Account -- Balance: " << pound << getbalance();
+		cout << " -- Overdraft Remaining: " << pound << getoverdraft() << endl;
+		Transaction::historytoString(gethistory());
 	};
 
 };
@@ -184,7 +233,7 @@ public:
 //-----Savings account------
 class Savings : public Account, public InterestEarning {
 	double interestRate = 0.0085;
-	double isa = 0.015;
+	const double isa = 0.0115;
 public:
 	//constructor
 
@@ -201,38 +250,57 @@ public:
 		appendhistory(tr);
 	}
 
+	//secondary constructor for creating temp object,
+	//as pointer can't use the calculate interesty since it is exclusive to the savings sub class
+	Savings(double b, double ir) {
+		setbalance(b);
+		setinterestRate(ir);
+	}
+
 	//getters and setters
 	double getinterestRate(void) { return interestRate; }
 	void setinterestRate(double ir) { interestRate = ir; }
-
-	//!?!?!?!?!?!?!may not need
-	//double getisa(void) { return isa; }
-	//void setisa(double i) { isa = i; }
-
 
 
 	//methods
 
 	void InterestEarning::computeInterest(int t) {
-		double P = getbalance();
 		int n = 12;
-		float projected = P * (pow(1 + (interestRate / n), n * t));
-		cout << "Projected balance in" << t << "years: £" << projected << endl;
+		double P = getbalance();
+		double r = getinterestRate();
+		float projected = P * (pow((1 + (r / n)), (n * t)));
+		cout << "Projected balance in" << t << "years: "<< pound << projected << endl;
 	};
 
 
 	void Account::deposit(double depam) {
+		
 		addbalance(depam);
+		Transaction dep("Deposit", depam);
+		appendhistory(dep);
+		toString();
+
 	};
 
 	void Account::withdraw(double witam) {
-		minusbalance(witam);
+		
+		if (witam > getbalance())
+			cout << "Insufficient funds" << endl;
+
+		else {
+			minusbalance(witam);
+			Transaction dep("Withdrawl", -witam);
+			appendhistory(dep);
+			toString();
+		}
+
 	};
 
 	void Account::toString() {
 		cout << gettype();
-		cout << " Account -- Balance £" << getbalance() << endl;
-		cout << "Interest Rate: " << 100 * interestRate << endl;
+		cout << " Account -- Balance " << pound << getbalance();
+		cout << " -- Interest Rate: " << 100 * interestRate << "%" << endl;
+		Transaction::historytoString(gethistory());
 	};
 
 
@@ -242,66 +310,77 @@ public:
 
 	
 int main()
-{	//-------------------testing-----------------------
+{	
+	//-------------------testing-----------------------
+	int test = 0;
+	if (test == 1) {
+		//testing transaction + current constructor and pointer
+		Transaction trtest("transaction pointer test", 1000.47);
 
-	//testing transaction + current constructor and pointer
-	Transaction trtest("transaction pointer test", 1000.47);
+		Current crtest("pointer Current", 1, 1000.47, trtest);
 
-	Current crtest("pointer Current", 1, 1000.47, trtest );
+		//trtest.toString();
+		//crtest.toString();
 
-	//trtest.toString();
-	//crtest.toString();
-	
-	Account* testptr = &crtest;
+		Account* testptr = &crtest;
 
-	testptr->toString();
-	cout << endl;
-	cout << "overdaft test: " << testptr->getoverdraft() << endl ;
+		testptr->toString();
+		cout << endl;
+		cout << "overdaft test: " << testptr->getoverdraft() << endl;
 
-	vector <Transaction> histest = testptr->gethistory();
+		vector <Transaction> histest = testptr->gethistory();
 
-	for (Transaction i : histest)
-		i.toString();
+		for (Transaction i : histest)
+			i.toString();
 
-	//testing pointer and savings constructor
+		//testing pointer and savings constructor
 
-	cout << endl << endl << endl << "Savings test:" << endl;
+		cout << endl << endl << endl << "Savings test:" << endl;
 
-	Transaction trtest2("Savings transaction test", 250.12);
+		Transaction trtest2("Savings transaction test", 250.12);
 
-	Savings svtest("Savings pointer test", 3, 250.12, trtest2);
+		Savings svtest("Savings pointer test", 3, 250.12, trtest2);
 
-	testptr = &svtest;
+		testptr = &svtest;
 
-	vector <Transaction> histest2 = testptr->gethistory();
+		vector <Transaction> histest2 = testptr->gethistory();
 
-	for (Transaction i : histest2)
-		i.toString();
+		for (Transaction i : histest2)
+			i.toString();
+	}
 
 
 	//-----------------testing-------------------------
 
 
 
-
-
 	std::vector <std::string> parameters;
 	std::string userCommand;
-	// you may also want to store a collection of opened accounts here
 	
-
 	//http://www2.lawrence.edu/fast/GREGGJ/CMSC270/Pointers/objects_and_pointers.html#:~:text=A%20pointer%20is%20a%20type,new%20object%20of%20type%20Order.
 
 	//vector of open account pointers
 	vector <Account*> openacc = {};
 	
-	//account pointer
+	//account pointer:
+	//polymorphism allows super class pointer to be used for sub class objects properly
 	Account* accountptr = nullptr; 
-	//polymorphism allows pointer super class pointer to be used for sub class objects
+	
+	int isaCount = 0;
 	
 	
 
 	std::cout << "~~~ Welcome to LincBank! ~~~" << std::endl;
+	
+	//following options copied from assignment example execution document
+	cout << "open type initial_deposit: open a current (1), savings (2) or ISA (3) account" << endl;
+	cout << "view [index]: view balance and recent transactions" << endl;
+	cout << "withdraw sum: withdraw funds from most recently viewed account" << endl;
+	cout << "deposit sum: deposit funds into most recently viewed account" << endl;
+	cout << "transfer src dest sum: transfer funds between accounts" << endl;
+	cout << "project years: project balance forward in time" << endl;
+	cout << "exit: close this application" << endl;
+	cout << "options: view these options again" << endl;
 
 	while (userCommand != "exit")
 	{
@@ -326,34 +405,161 @@ int main()
 
 		if (command.compare("options") == 0)
 		{
-			// display the various commands to the user
+			cout << "open type initial_deposit: open a current (1), savings (2) or ISA (3) account" << endl;
+			cout << "view [index]: view balance and recent transactions" << endl;
+			cout << "withdraw sum: withdraw funds from most recently viewed account" << endl;
+			cout << "deposit sum: deposit funds into most recently viewed account" << endl;
+			cout << "transfer src dest sum: transfer funds between accounts" << endl;
+			cout << "project years: project balance forward in time" << endl;
+			cout << "exit: close this application" << endl;
+			cout << "options: view these options again" << endl;
+			
 		}
+		//open
 		else if (command.compare("open") == 0)
 		{
-			
 			// allow a user to open an account
 			// e.g., Account* a = new Savings(...);
-		}
+
+			int input2 = stoi(parameters[1]);
+			double input3 = stod(parameters[2]);
+			//ERROR HANDLING FOR INPUTS THAT AREN'T INT AND DOUBLE
+
+
+			//--------------OPEN CURRENT
+			if (input2 == 1){
+
+				Transaction temp("Opening Deposit", input3);
+				accountptr = new Current("Current", 1, input3, temp);
+
+				openacc.push_back(accountptr);
+				cout << "Current Account created:" << endl;
+				accountptr->toString();
+				
+			}
+
+			//--------------OPEN SAVINGS
+			else if (input2 == 2) {
+
+				Transaction temp("Opening Deposit", input3);
+				accountptr = new Savings("Savings", 2, input3, temp);
+
+				openacc.push_back(accountptr);
+				cout << "Savings Account created:" << endl;
+				accountptr->toString();
+			
+			}
+
+			//-------------------OPEN ISA
+			else if (input2 == 3) {
+				if (isaCount == 1) {
+					cout << "You can only open 1 ISA account." << endl;
+				}
+				else {
+					if (input3 >= 1000) {
+
+						Transaction temp("Opening Deposit", input3);
+						accountptr = new Savings("ISA", 3, input3, temp);
+
+						openacc.push_back(accountptr);
+						cout << "ISA Account created:" << endl;
+						accountptr->toString();
+						temp.toString();
+						isaCount = 1;
+					}
+
+					else {
+						cout << "Minimum deposit of 1000.00 required for ISA accounts" << endl;
+					}
+				}
+			}
+		}	
+
+
+		//-------------- VIEW
 		else if (command.compare("view") == 0)
 		{
 			// display an account according to an index (starting from 1)
 			// alternatively, display all accounts if no index is provided
+
+			//NO INDEX
+			if (size(parameters) == 1) {
+				for (Account* i : openacc){
+					i->toString();
+				}
+			}
+
+			//INDEX
+
+			else if (size(parameters) == 2) {
+				int index = stoi(parameters[1]) - 1;
+				accountptr = openacc[index];
+				accountptr->toString();
+			}
 		}
+
+		//------------- WITHDRAW
 		else if (command.compare("withdraw") == 0)
 		{
-			// allow user to withdraw funds from an account
+			accountptr->withdraw(stod(parameters[1]));
+
 		}
+
+		//--------------- DEPOSIT
 		else if (command.compare("deposit") == 0)
 		{
-			// allow user to deposit funds into an account
+			accountptr->deposit(stod(parameters[1]));
 		}
+
+		//--------------- TRANSFER
 		else if (command.compare("transfer") == 0)
-		{
-			// allow user to transfer funds between accounts
-			// i.e., a withdrawal followed by a deposit!
+		{	
+			int send = stoi(parameters[1]) - 1;
+			int receive = stoi(parameters[2]) - 1;
+			double transAm = stod(parameters[3]);
+
+			accountptr = openacc[send];
+
+			//if sending from current account, required for overdraft implementation
+			if (accountptr->getcode() == 1) {
+
+				if(transAm > (accountptr->getbalance() + accountptr->getoverdraft()) )
+					cout<<"Insufficient funds"<<endl;
+
+				else {
+					accountptr->withdraw(transAm);
+					accountptr = openacc[receive];
+					accountptr->deposit(transAm);
+				}
+			}
+
+			//for transferring from savings account, overdraft is not needed to implement
+			else {
+				if (transAm < accountptr->getbalance()) {
+					cout << "Insufficient funds" << endl;
+				}
+
+				else {
+					accountptr->withdraw(transAm);
+					accountptr = openacc[receive];
+					accountptr->deposit(transAm);
+				}
+			}
 		}
-		else if (command.compare("project") == 0)
-		{
+
+		//------------- PROJECT 
+		else if (command.compare("project") == 0){
+			int y = stoi(parameters[1]);
+
+			if (accountptr->getcode() == 1)
+				cout << "Current accounts do not accrue interest, please select a Savings or ISA account by viewing them" << endl;
+
+			else {
+				
+				Savings temp(accountptr->getbalance(), accountptr->getinterestRate());
+				temp.computeInterest(y);
+			}
+		
 			// compute compound interest t years into the future
 		}
 		//else if (command.compare("search"))
