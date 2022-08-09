@@ -52,7 +52,7 @@ public:
 	}
 
 	void toString() {
-		cout << getdesc() << " : " << pound << value << " on " << timestamp;
+		cout << "	." << getdesc() << " : " << pound << value << " on " << timestamp;
 	};
 
 	static void historytoString(vector <Transaction> h) {
@@ -220,8 +220,8 @@ public:
 
 	void Account::toString() {
 		cout << gettype();
-		cout << " Account -- Balance: " << pound << getbalance();
-		cout << " -- Overdraft Remaining: " << pound << getoverdraft() << endl;
+		cout << " Account | Balance: " << pound << getbalance();
+		cout << " | Overdraft Remaining: " << pound << getoverdraft() << endl;
 		Transaction::historytoString(gethistory());
 	};
 
@@ -268,8 +268,8 @@ public:
 		int n = 12;
 		double P = getbalance();
 		double r = getinterestRate();
-		float projected = P * (pow((1 + (r / n)), (n * t)));
-		cout << "Projected balance in" << t << "years: "<< pound << projected << endl;
+		double projected = P * (pow((1 + (r / n)), (n * t)));
+		cout << "Projected balance in " << t << " years: "<< pound << projected << endl;
 	};
 
 
@@ -298,12 +298,10 @@ public:
 
 	void Account::toString() {
 		cout << gettype();
-		cout << " Account -- Balance " << pound << getbalance();
-		cout << " -- Interest Rate: " << 100 * interestRate << "%" << endl;
+		cout << " Account | Balance " << pound << getbalance();
+		cout << " | Interest Rate: " << 100 * interestRate << "%" << endl;
 		Transaction::historytoString(gethistory());
 	};
-
-
 
 };
 
@@ -347,10 +345,8 @@ int main()
 
 		for (Transaction i : histest2)
 			i.toString();
-	}
+	} //--------------------- end of testing-------------------
 
-
-	//-----------------testing-------------------------
 
 
 
@@ -415,153 +411,282 @@ int main()
 			cout << "options: view these options again" << endl;
 			
 		}
+
 		//open
 		else if (command.compare("open") == 0)
 		{
-			// allow a user to open an account
-			// e.g., Account* a = new Savings(...);
 
-			int input2 = stoi(parameters[1]);
-			double input3 = stod(parameters[2]);
-			//ERROR HANDLING FOR INPUTS THAT AREN'T INT AND DOUBLE
+			try {
 
 
-			//--------------OPEN CURRENT
-			if (input2 == 1){
+				//error handling for inputs that do not satisfy the number of parameters required
+				if (size(parameters) > 3 || size(parameters)<3)
+					throw "Number of parameters invalid.";
 
-				Transaction temp("Opening Deposit", input3);
-				accountptr = new Current("Current", 1, input3, temp);
 
-				openacc.push_back(accountptr);
-				cout << "Current Account created:" << endl;
-				accountptr->toString();
-				
-			}
+				int input2 = stoi(parameters[1]);
 
-			//--------------OPEN SAVINGS
-			else if (input2 == 2) {
+				if (input2 > 3 || input2 < 1)
+					throw "Invalid account type";
 
-				Transaction temp("Opening Deposit", input3);
-				accountptr = new Savings("Savings", 2, input3, temp);
+				double input3 = stod(parameters[2]);
 
-				openacc.push_back(accountptr);
-				cout << "Savings Account created:" << endl;
-				accountptr->toString();
-			
-			}
+				if (input3 < 0)
+					throw "Deposit amount cannot be negative.";
 
-			//-------------------OPEN ISA
-			else if (input2 == 3) {
-				if (isaCount == 1) {
-					cout << "You can only open 1 ISA account." << endl;
+				//--------------OPEN CURRENT
+				if (input2 == 1) {
+
+					Transaction temp("Opening Deposit", input3);
+					accountptr = new Current("Current", 1, input3, temp);
+
+					openacc.push_back(accountptr);
+					cout << "Current Account created:" << endl;
+					accountptr->toString();
+
 				}
-				else {
-					if (input3 >= 1000) {
 
-						Transaction temp("Opening Deposit", input3);
-						accountptr = new Savings("ISA", 3, input3, temp);
+				//--------------OPEN SAVINGS
+				else if (input2 == 2) {
 
-						openacc.push_back(accountptr);
-						cout << "ISA Account created:" << endl;
-						accountptr->toString();
-						temp.toString();
-						isaCount = 1;
+					Transaction temp("Opening Deposit", input3);
+					accountptr = new Savings("Savings", 2, input3, temp);
+
+					openacc.push_back(accountptr);
+					cout << "Savings Account created:" << endl;
+					accountptr->toString();
+
+				}
+
+				//-------------------OPEN ISA
+				else if (input2 == 3) {
+					if (isaCount == 1) {
+						throw "You can only open 1 ISA account.";
 					}
-
 					else {
-						cout << "Minimum deposit of 1000.00 required for ISA accounts" << endl;
+						if (input3 >= 1000) {
+
+							Transaction temp("Opening Deposit", input3);
+							accountptr = new Savings("ISA", 3, input3, temp);
+
+							openacc.push_back(accountptr);
+							cout << "ISA Account created:" << endl;
+							accountptr->toString();
+							temp.toString();
+							isaCount = 1;
+						}
+
+						else {
+							throw "Minimum deposit of 1000.00 required for ISA accounts";
+						}
 					}
 				}
 			}
+
+			catch (const char* msg) {
+				cerr << "Error has occured:" << endl << msg << endl;
+			}
+
+			catch (...) {
+				cout << "Default Error has occurred:" << endl << "Ensure you input a valid parameters etc." << endl;
+			}
+
 		}	
 
 
 		//-------------- VIEW
 		else if (command.compare("view") == 0)
 		{
-			// display an account according to an index (starting from 1)
-			// alternatively, display all accounts if no index is provided
 
-			//NO INDEX
-			if (size(parameters) == 1) {
-				for (Account* i : openacc){
-					i->toString();
+			try {
+				
+				// present in all commands that deal with open accounts
+				if (size(openacc) == 0)
+					throw "Please open an account before you proceed.";
+
+
+				//checks no. of params
+				if (size(parameters) > 2)
+					throw "Invalid number of parameters.";
+
+				//NO INDEX
+				if (size(parameters) == 1) {
+					for (Account* i : openacc) {
+						i->toString();
+					}
 				}
+
+				//INDEX
+
+				else if (size(parameters) == 2) {
+					
+					int index = stoi(parameters[1]) - 1;
+
+					//checks if index is in range
+					if (index > size(openacc)-1)
+						throw "Invalid index.";
+
+					accountptr = openacc[index];
+					accountptr->toString();
+				}
+
 			}
 
-			//INDEX
-
-			else if (size(parameters) == 2) {
-				int index = stoi(parameters[1]) - 1;
-				accountptr = openacc[index];
-				accountptr->toString();
+			catch (const char* msg) {
+				cerr <<"Error has occured:"<< endl << msg << endl;
 			}
+			catch (...) {
+				cerr << "Default Error has occurred:"<< endl << "Ensure you input valid parameters etc." << endl;
+			}
+
 		}
 
 		//------------- WITHDRAW
 		else if (command.compare("withdraw") == 0)
 		{
-			accountptr->withdraw(stod(parameters[1]));
+			try {
+
+				if (size(openacc) == 0)
+					throw "Please open an account before you proceed.";
+
+				//checks for no. of params
+				if (size(parameters) > 2 || size(parameters) < 2)
+					throw "Invalid number of parameters.";
+
+				//checks for negative
+				if (stod(parameters[1]) <= 0)
+					throw "Withdrawl amount cannot be negative.";
+
+				accountptr->withdraw(stod(parameters[1]));
+			}
+
+			catch (const char* msg) {
+				cerr << "Error has occured:" << endl << msg << endl;
+			}
+			catch (...) {
+				cerr << "Defualt Error has occurred:" << endl << "Ensure you input valid parameters etc." << endl;
+			}
 
 		}
 
 		//--------------- DEPOSIT
 		else if (command.compare("deposit") == 0)
-		{
-			accountptr->deposit(stod(parameters[1]));
+		{	
+			try {
+
+				if (size(openacc) == 0)
+					throw "Please open an account before you proceed.";
+
+				//checks no. of params
+				if (size(parameters) > 2 || size(parameters) < 2)
+					throw "Invalid number of parameters";
+
+				//checks for negative
+				if (stod(parameters[1]) <= 0)
+					throw "Deposit amount cannot be negative.";
+
+				accountptr->deposit(stod(parameters[1]));
+			}
+
+			catch (const char* msg) {
+				cerr << "Error has occured:" << endl << msg << endl;
+			}
+			catch (...) {
+				cerr << "Default Error has occurred:" << endl << "Ensure you input valid parameters etc." << endl;
+			}
+
 		}
 
 		//--------------- TRANSFER
 		else if (command.compare("transfer") == 0)
 		{	
-			int send = stoi(parameters[1]) - 1;
-			int receive = stoi(parameters[2]) - 1;
-			double transAm = stod(parameters[3]);
+			
+			
+			try {
 
-			accountptr = openacc[send];
+				if (size(openacc) == 0)
+					throw "Please open an account before you proceed.";
 
-			//if sending from current account, required for overdraft implementation
-			if (accountptr->getcode() == 1) {
+				//checks number of params
+				if (size(parameters) > 3 || size(parameters) < 3)
+					throw "Invalid number of parameters.";
+				
 
-				if(transAm > (accountptr->getbalance() + accountptr->getoverdraft()) )
-					cout<<"Insufficient funds"<<endl;
+				int send = stoi(parameters[1]) - 1;
+				int receive = stoi(parameters[2]) - 1;
+				double transAm = stod(parameters[3]);
 
+				//checks indexes are in range of vector
+				if (send + 1 > size(openacc) || receive + 1 > size(openacc))
+					throw "Invalid index.";
+					
+				accountptr = openacc[send];
+
+				//if sending from current account, required for overdraft implementation
+				if (accountptr->getcode() == 1) {
+
+					if (transAm > (accountptr->getbalance() + accountptr->getoverdraft()))
+						throw "Insufficient funds.";
+
+					else {
+						accountptr->withdraw(transAm);
+						accountptr = openacc[receive];
+						accountptr->deposit(transAm);
+					}
+				}
+
+				//for transferring from savings account, overdraft is not needed to implement
 				else {
-					accountptr->withdraw(transAm);
-					accountptr = openacc[receive];
-					accountptr->deposit(transAm);
+					if (transAm > accountptr->getbalance()) {
+						throw "Insufficient funds.";
+					}
+
+					else {
+						accountptr->withdraw(transAm);
+						accountptr = openacc[receive];
+						accountptr->deposit(transAm);
+					}
 				}
 			}
-
-			//for transferring from savings account, overdraft is not needed to implement
-			else {
-				if (transAm < accountptr->getbalance()) {
-					cout << "Insufficient funds" << endl;
-				}
-
-				else {
-					accountptr->withdraw(transAm);
-					accountptr = openacc[receive];
-					accountptr->deposit(transAm);
-				}
+			
+			catch (const char* msg) {
+				cerr << "Error has occured:" << endl << msg << endl;
+			}
+			catch (...) {
+				cerr << "Default Error has occurred:" << endl << "Ensure you input valid parameters etc." << endl;
 			}
 		}
 
 		//------------- PROJECT 
 		else if (command.compare("project") == 0){
-			int y = stoi(parameters[1]);
 
-			if (accountptr->getcode() == 1)
-				cout << "Current accounts do not accrue interest, please select a Savings or ISA account by viewing them" << endl;
+			try {
 
-			else {
-				
+				if (size(openacc) == 0)
+					throw "Please open an account before you proceed.";
+
+				if (size(parameters) > 2 || size(parameters) < 2)
+					throw "Invalid number of parameters.";
+
+				int y = stoi(parameters[1]);
+
+				if (accountptr->getcode() == 1)
+					throw  "Current accounts do not accrue interest, please select a Savings or ISA account (view to select).";
+
 				Savings temp(accountptr->getbalance(), accountptr->getinterestRate());
 				temp.computeInterest(y);
+				
 			}
 		
-			// compute compound interest t years into the future
+			catch (const char* msg) {
+				cerr << "Error has occured:" << endl << msg << endl;
+			}
+			catch (...) {
+				cerr << "Default Error has occurred:" << endl << "Ensure you input valid parameters etc." << endl;
+			}
 		}
+
+
 		//else if (command.compare("search"))
 		//{
 		//	allow users to search their account history for a transaction
